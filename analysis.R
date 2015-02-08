@@ -1,5 +1,6 @@
 # Analysis for exercise 01 for RTI
 # By Tyler Bradley
+# Note: This really should be separated into different files
 
 # Code for working with SQLite
 # From http://www.r-bloggers.com/using-sqlite-in-r/
@@ -131,7 +132,7 @@ table(data$race,data$country)
 # Make sure prop of 0ver_50k is similar, probably need sampling package
 set.seed(prod(strtoi(charToRaw('RTI'))))
 
-data<-data[,names(data)!=c('id','education_level')]
+data<-data[,!names(data)%in%c('id')]
 parts<-sample(c('train','valid','test'),size=nrow(data),replace=TRUE,prob=c(.60,.20,.20))
 # Glance at the difference
 dataTrain<-data[parts=='train',]
@@ -142,8 +143,6 @@ dataTest<-data[parts=='test',]
 summary(dataTest)
 # Looks pretty similar, good to go
 
-table(dataTrain$occupation,dataTrain$over_50k==1)
-summary(dataTrain[dataTrain$over_50k==0,])
 
 ## Build some models
 modelLog<-glm(over_50k ~ ., data=dataTrain, family=binomial)
@@ -177,6 +176,7 @@ modelLog2<-glmnet(x,y,alpha=1,family='binomial')
 modelLog2
 plot(modelLog2,xvar="lambda")
 # 25 variables?
+# play around with this
 abline(v=log(modelLog2$lambda[37]))
 
 names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
@@ -197,7 +197,6 @@ pred2<-prediction(preds,dataValid$over_50k)
 perf2<-performance(pred2,"tpr","fpr")
 plot(perf)
 plot(perf2,add=TRUE,col="red")
-plot(perf3,add=TRUE,col="green")
 
 # use glm with lasso selection
 vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
@@ -234,25 +233,75 @@ plot(perf2,add=TRUE,col="red")
 plot(perf3,add=TRUE,col="green")
 # Not to shabby
 
-# Random forest, just because
-library(randomForest)
-modelRF<-randomForest(over_50k~.,dataTrain)
-plot(modelRF)
-# 100 trees looks good
-preds<-predict(modelRF,newdata=dataValid,type="prob")
+# Check is standarization is needed
+vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
+x<-data.frame(model.matrix(over_50k ~ .,data=dataTrain)[,-1])
+head(x)
+x<-x[,names(x)%in%vars]
+head(x)
+dataNew<-cbind(x,over_50k=dataTrain$over_50k)
+names(dataNew)
+head(dataNew)
+modelLog4<-glm(over_50k ~ .,data=dataNew,family="binomial")
+
+xValid <- data.frame(model.matrix(over_50k ~ .,data=dataValid)[,-1])
+head(xValid)
+xValid<-xValid[,names(xValid)%in%vars]
+head(xValid)
+dataNewValid<-cbind(xValid,over_50k=dataValid$over_50k)
+names(dataNewValid)
+
+preds<-predict(modelLog4,newdata=dataNewValid,type='response')
 head(preds)
 
-pred4<-prediction(preds[,2],dataValid$over_50k)
+pred4<-prediction(preds,dataValid$over_50k)
 perf4<-performance(pred4,"tpr","fpr")
 plot(perf)
 plot(perf2,add=TRUE,col="red")
 plot(perf3,add=TRUE,col="green")
-plot(perf4,add=TRUE,col="blue")
+plot(perf4,add=TRUE,col="purple")
+# Yes, standarization is needed
+
+# Random forest, just because
+library(randomForest)
+?randomForest
+modelRF<-randomForest(over_50k~.,dataTrain,ntree=150)
+plot(modelRF)
+# 75 trees looks good
+modelRF<-randomForest(over_50k~.,dataTrain,ntree=75)
+preds<-predict(modelRF,newdata=dataValid,type="prob")
+head(preds)
+
+pred5<-prediction(preds[,2],dataValid$over_50k)
+perf5<-performance(pred5,"tpr","fpr")
+plot(perf)
+plot(perf2,add=TRUE,col="red")
+plot(perf3,add=TRUE,col="green")
+plot(perf4,add=TRUE,col="purple")
+plot(perf5,add=TRUE,col="blue")
 # Not as good
 
-# GLM with Lasso selection is best
+# Standarized GLM with Lasso selection is best
 
 # Get cutoff
+toStandardize<-sapply(data,function(x)!is.factor(x))
+toStandardize<-dataValid[,names(dataValid)[toStandardize]]
+standVal<-scale(toStandardize,center=attr(stand,"scaled:center"),scale=attr(stand,"scaled:scale"))
+head(standVal)
+dataValid2<-dataValid[,names(dataValid)[sapply(data,function(x)is.factor(x))]]
+dataValid2<-cbind(dataValid2,data.frame(standVal))
+head(dataValid2)
+xValid <- model.matrix(over_50k ~ .,data=dataValid2)[,-1]
+head(xValid)
+xNewValid <- as.data.frame(xValid)
+xNewValid<-xNewValid[,names(xNewValid)%in%vars]
+head(xNewValid)
+dataNewValid<-cbind(xNewValid,over_50k=dataValid$over_50k)
+names(dataNewValid)
+
+preds<-predict(modelLog3,newdata=dataNewValid,type='response')
+head(preds)
+
 preds<-predict(modelLog3,newdata=dataNewValid,type='response')
 head(preds)
 compare<-data.frame("actual"=dataValid$over_50k,preds=as.vector(preds))
@@ -276,100 +325,104 @@ cutoffs[misclasses==min(misclasses)]
 # Now to get testing dataset
 #  Rebuild model
 
-
-
-# Start back here
-
-
-
-
-toStandardize<-sapply(data,function(x)!is.factor(x))
-toStandardize<-dataTrain[,names(dataTrain)[toStandardize]]
+newData<-data[parts!='test',]
+head(newData)
+toStandardize<-sapply(newData,function(x)!is.factor(x))
+toStandardize<-newData[,names(newData)[toStandardize]]
 stand<-scale(toStandardize)
 head(stand)
-dataTrain2<-dataTrain[,names(dataTrain)[sapply(data,function(x)is.factor(x))]]
-dataTrain2<-cbind(dataTrain2,stand)
-head(dataTrain2)
-x <- model.matrix(over_50k ~ .,data=dataTrain2)[,-1]
+newData2<-newData[,names(newData)[sapply(data,function(x)is.factor(x))]]
+newData2<-cbind(newData2,stand)
+head(newData2)
+x <- model.matrix(over_50k ~ .,data=newData2)[,-1]
 head(x)
-y<-as.matrix(dataTrain2$over_50k)
-modelLog2<-glmnet(x,y,alpha=1,family='binomial')
-modelLog2
-plot(modelLog2,xvar="lambda")
-# 25 variables?
-abline(v=log(modelLog2$lambda[37]))
-
-names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
-toStandardize<-sapply(data,function(x)!is.factor(x))
-toStandardize<-dataValid[,names(dataValid)[toStandardize]]
-standVal<-scale(toStandardize,center=attr(stand,"scaled:center"),scale=attr(stand,"scaled:scale"))
-head(standVal)
-dataValid2<-dataValid[,names(dataValid)[sapply(data,function(x)is.factor(x))]]
-dataValid2<-cbind(dataValid2,data.frame(standVal))
-head(dataValid2)
-xValid <- model.matrix(over_50k ~ .,data=dataValid2)[,-1]
-head(xValid)
-
-preds<-predict(modelLog2,newx=xValid,type='response',s=modelLog2$lambda[37])
-head(preds)
-
-pred2<-prediction(preds,dataValid$over_50k)
-perf2<-performance(pred2,"tpr","fpr")
-plot(perf)
-plot(perf2,add=TRUE,col="red")
-plot(perf3,add=TRUE,col="green")
+y<-as.matrix(newData2$over_50k)
+modelLog6<-glmnet(x,y,alpha=1,family='binomial')
+modelLog6
+plot(modelLog6,xvar="lambda")
+# 25 variables
+# 37 again
+abline(v=log(modelLog6$lambda[37]))
 
 # use glm with lasso selection
-vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
+vars<-names(as.data.frame(x))[as.vector(coef(modelLog6)[,37])[-1]!=0]
 xNew <- as.data.frame(x)
 names(xNew)
 xNew<-xNew[,names(xNew)%in%vars]
 head(xNew)
-dataNew<-cbind(xNew,over_50k=dataTrain$over_50k)
+dataNew<-cbind(xNew,over_50k=newData$over_50k)
 names(dataNew)
-modelLog3<-glm(over_50k ~ .,data=dataNew,family="binomial")
+modelLog7<-glm(over_50k ~ .,data=dataNew,family="binomial")
 
 toStandardize<-sapply(data,function(x)!is.factor(x))
-toStandardize<-dataValid[,names(dataValid)[toStandardize]]
-standVal<-scale(toStandardize,center=attr(stand,"scaled:center"),scale=attr(stand,"scaled:scale"))
-head(standVal)
-dataValid2<-dataValid[,names(dataValid)[sapply(data,function(x)is.factor(x))]]
-dataValid2<-cbind(dataValid2,data.frame(standVal))
-head(dataValid2)
-xValid <- model.matrix(over_50k ~ .,data=dataValid2)[,-1]
-head(xValid)
-xNewValid <- as.data.frame(xValid)
-xNewValid<-xNewValid[,names(xNewValid)%in%vars]
-head(xNewValid)
-dataNewValid<-cbind(xNewValid,over_50k=dataValid$over_50k)
-names(dataNewValid)
+toStandardize<-dataTest[,names(dataTest)[toStandardize]]
+standTest<-scale(toStandardize,center=attr(stand,"scaled:center"),scale=attr(stand,"scaled:scale"))
+head(standTest)
+dataTest2<-dataTest[,names(dataTest)[sapply(data,function(x)is.factor(x))]]
+dataTest2<-cbind(dataTest2,data.frame(standTest))
+head(dataTest2)
+xTest <- model.matrix(over_50k ~ .,data=dataTest2)[,-1]
+head(xTest)
+xNewTest <- as.data.frame(xTest)
+xNewTest<-xNewTest[,names(xNewTest)%in%vars]
+head(xNewTest)
+dataNewTest<-cbind(xNewTest,over_50k=dataTest$over_50k)
+names(dataNewTest)
 
-preds<-predict(modelLog3,newdata=dataNewValid,type='response')
+preds<-predict(modelLog7,newdata=dataNewTest,type='response')
 head(preds)
 
+predTest<-prediction(preds,dataTest$over_50k)
+perfTest<-performance(predTest,"tpr","fpr")
+plot(perf)
+# Looks good
+predictions<-data.frame(preds=preds,actual=dataTest$over_50k)
+# .5 comes from the previous cutoff selection
+predictions$predsRound<-ifelse(predictions$preds<.5,0,1)
+head(predictions)
+table(predictions$predsRound,predictions$actual,dnn=c("Pred","Act"))
+prop.table(table(predictions$predsRound,predictions$actual,dnn=c("Pred","Act")))
 
+# Make a chart
+library(ggplot2)
+vars
+# Education
 
-# Score the test
+max(by(data$age,data$education_level,min))
 
-data2<-data[parts=="test",]
-toStandardize<-sapply(data,function(x)!is.factor(x))
-toStandardize<-data2[,names(data2)[toStandardize]]
-standVal<-scale(toStandardize,center=attr(stand,"scaled:center"),scale=attr(stand,"scaled:scale"))
-head(standVal)
-data2.2<-data2[,names(data2)[sapply(data,function(x)is.factor(x))]]
-data2.2<-cbind(data2.2,data.frame(standVal))
-head(data2.2)
-x2 <- model.matrix(over_50k ~ .,data=data2.2)[,-1]
-head(x2)
-xNew2 <- as.data.frame(x2)
-xNew2<-xNew2[,names(xNew2)%in%vars]
-head(xNew2)
-dataNew2<-cbind(xNew2,over_50k=data2$over_50k)
-names(dataNew2)
+names(data)
+unique(data[,c("education_level","education_num")])[1]
+education<-data.frame("education_level"=unique(data[,c("education_level","education_num")])[1])
+education$education_num<-unique(data[,c("education_level","education_num")])[2]
+education<-education[order(education$education_num),]
+education$education_level<-factor(education$education_level,levels=education$education_level[order(education$education_num)])
+education$under50k<-table(data$education_num,data$over_50k)[,1]
+education$over50k<-table(data$education_num,data$over_50k)[,2]
+education$prop<-education$over50k/(education$over50k+education$under50k)
+head(education)
+qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",ylim=c(0,1))
 
-preds<-predict(modelLog3,newdata=dataNewValid,type='response')
-head(preds)
+# take out young people
+# It's not really far to keep student that haven't reached a level yet
+# ie, you don't want to compare preschoolers to doctorate student because of the age difference
+max(by(data$age,data$education_level,min))
+dataOld<-data[data$age>25,]
 
+names(data)
+unique(dataOld[,c("education_level","education_num")])[1]
+education<-data.frame("education_level"=unique(dataOld[,c("education_level","education_num")])[1])
+education$education_num<-unique(dataOld[,c("education_level","education_num")])[2]
+education<-education[order(education$education_num),]
+education$education_level<-factor(education$education_level,levels=education$education_level[order(education$education_num)])
+education$under50k<-table(dataOld$education_num,dataOld$over_50k)[,1]
+education$over50k<-table(dataOld$education_num,dataOld$over_50k)[,2]
+education$prop<-education$over50k/(education$over50k+education$under50k)
+head(education)
+
+qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",ylim=c(0,1),
+      ylab="Proportion of over $50k/year",xlab="Highest level of Education",
+      main="Proportion over $50/year by Education Level \n for 25 years old and older") + 
+      theme(axis.text.x = element_text(colour="black"), axis.text.y = element_text(colour="black"))
 
 
 #If Class=Never-worked, or in holland then 0.
