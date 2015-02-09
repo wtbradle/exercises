@@ -52,10 +52,10 @@ bigTable<-bigTable[,substr(names(bigTable),nchar(names(bigTable))-2,nchar(names(
 #nrow(bigTable)
 
 # Save the data someplace for later use
-write.csv(bigTable,"C:\\Users\\Tyler\\Desktop\\RTI\\exercises\\flattened.csv",row.names=FALSE)
+write.csv(bigTable,"C:\\Users\\Tyler\\Desktop\\RTI\\exercises\\exercise01\\flattened.csv",row.names=FALSE)
 
 # Read in to make sure it was saved correctly
-data<-read.csv("C:\\Users\\Tyler\\Desktop\\RTI\\exercises\\flattened.csv")
+data<-read.csv("C:\\Users\\Tyler\\Desktop\\RTI\\exercises\\exercise01\\flattened.csv")
 #head(data)
 #nrow(data)
 #names(data)
