@@ -553,7 +553,7 @@ qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",ylim=c(
 jpeg(file="C:\\Users\\Tyler\\Desktop\\RTI\\exercises\\exercise01\\educationPlot.jpeg",width=1000,height=700,quality=90)
 qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",ylim=c(0,1),
       ylab="Proportion of over $50k/year",xlab="Highest level of Education",
-      main="Proportion over $50/year by Education Level \n for 25 years old and older") + 
+      main="Proportion over $50k/year by Education Level \n for 25 years old and older") + 
       theme(axis.text.x = element_text(colour="black"), axis.text.y = element_text(colour="black"))
 dev.off()
 
