@@ -199,7 +199,7 @@ plot(perf)
 plot(perf2,add=TRUE,col="red")
 
 # use glm with lasso selection
-vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
+vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,25])[-1]!=0]
 xNew <- as.data.frame(x)
 names(xNew)
 xNew<-xNew[,names(xNew)%in%vars]
@@ -231,10 +231,13 @@ perf3<-performance(pred3,"tpr","fpr")
 plot(perf)
 plot(perf2,add=TRUE,col="red")
 plot(perf3,add=TRUE,col="green")
+# 10 is not good
+# 20 is still good
+# Go with 20
 # Not to shabby
 
 # Check is standarization is needed
-vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,37])[-1]!=0]
+vars<-names(as.data.frame(x))[as.vector(coef(modelLog2)[,33])[-1]!=0]
 x<-data.frame(model.matrix(over_50k ~ .,data=dataTrain)[,-1])
 head(x)
 x<-x[,names(x)%in%vars]
@@ -340,12 +343,12 @@ y<-as.matrix(newData2$over_50k)
 modelLog6<-glmnet(x,y,alpha=1,family='binomial')
 modelLog6
 plot(modelLog6,xvar="lambda")
-# 25 variables
+# 20 variables
 # 37 again
-abline(v=log(modelLog6$lambda[37]))
+abline(v=log(modelLog6$lambda[32]))
 
 # use glm with lasso selection
-vars<-names(as.data.frame(x))[as.vector(coef(modelLog6)[,37])[-1]!=0]
+vars<-names(as.data.frame(x))[as.vector(coef(modelLog6)[,32])[-1]!=0]
 xNew <- as.data.frame(x)
 names(xNew)
 xNew<-xNew[,names(xNew)%in%vars]
@@ -353,6 +356,7 @@ head(xNew)
 dataNew<-cbind(xNew,over_50k=newData$over_50k)
 names(dataNew)
 modelLog7<-glm(over_50k ~ .,data=dataNew,family="binomial")
+
 
 toStandardize<-sapply(data,function(x)!is.factor(x))
 toStandardize<-dataTest[,names(dataTest)[toStandardize]]
@@ -374,7 +378,8 @@ head(preds)
 
 predTest<-prediction(preds,dataTest$over_50k)
 perfTest<-performance(predTest,"tpr","fpr")
-plot(perf)
+plot(perfTest)
+unlist(slot(performance(predTest,"auc"),"y.values"))
 # Looks good
 predictions<-data.frame(preds=preds,actual=dataTest$over_50k)
 # .5 comes from the previous cutoff selection
@@ -382,6 +387,8 @@ predictions$predsRound<-ifelse(predictions$preds<.5,0,1)
 head(predictions)
 table(predictions$predsRound,predictions$actual,dnn=c("Pred","Act"))
 prop.table(table(predictions$predsRound,predictions$actual,dnn=c("Pred","Act")))
+mean(predictions$predsRound!=predictions$actual)
+# Misclassification rate of 14.86%
 
 # Make a chart
 library(ggplot2)
