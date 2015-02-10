@@ -544,19 +544,29 @@ education$over50k<-table(dataOld$education_num,dataOld$over_50k)[,2]
 education$prop<-education$over50k/(education$over50k+education$under50k)
 #head(education)
 
-qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",ylim=c(0,1),
+qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",
       ylab="Proportion of over $50k/year",xlab="Highest level of Education",
-      main="Proportion over $50/year by Education Level \n for 25 years old and older") + 
-      theme(axis.text.x = element_text(colour="black"), axis.text.y = element_text(colour="black"))
+      main="Proportion of over $50k/year by Education Level \n for 25 years old and older") + 
+      theme(axis.text.x = element_text(colour="black",size=15,angle=15), axis.text.y = element_text(colour="black",size=15),
+        plot.title = element_text(colour="black",size=19), axis.title=element_text(colour="black",size=17),
+        panel.background = element_rect(fill = 'white', colour = 'darkgray'), panel.grid.major  = element_line(color="darkgray"),
+        panel.grid.minor=element_line(color="gray85"), panel.grid.major.x = element_blank() ) +
+      scale_y_continuous(limits=c(0,1), expand = c(0, 0))
 
 # Save the final image
 jpeg(file="C:\\Users\\Tyler\\Desktop\\RTI\\exercises\\exercise01\\educationPlot.jpeg",width=1000,height=700,quality=90)
-qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",ylim=c(0,1),
+qplot(x=education_level,y=prop,data=education,geom="bar",stat="identity",
       ylab="Proportion of over $50k/year",xlab="Highest level of Education",
-      main="Proportion over $50k/year by Education Level \n for 25 years old and older") + 
-      theme(axis.text.x = element_text(colour="black"), axis.text.y = element_text(colour="black"))
+      main="Proportion of over $50k/year by Education Level \n for 25 years old and older") + 
+      theme(axis.text.x = element_text(colour="black",size=15,angle=15), axis.text.y = element_text(colour="black",size=15),
+            plot.title = element_text(colour="black",size=19), axis.title=element_text(colour="black",size=17),
+            panel.background = element_rect(fill = 'white', colour = 'darkgray'), panel.grid.major  = element_line(color="darkgray"),
+            panel.grid.minor=element_line(color="gray85"), panel.grid.major.x = element_blank() ) +
+      scale_y_continuous(limits=c(0,1), expand = c(0, 0))
 dev.off()
 
 # Notes:
-# If Class=Never-worked, or in holland then 0.
+# If Class=Never-worked, or in holand then 0.
 # A ton of this code is repeated and could probably be put into a function
+# Should probably check for interactions and higher order terms
+# Should also look into model assumptions
